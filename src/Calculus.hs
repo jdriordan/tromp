@@ -3,7 +3,9 @@
 module Calculus where
 
 import Debug.Trace
-trace' = \x y -> y -- K combinator
+trace' = if True
+  then \x y -> y -- K combinator
+  else trace
 
 data Variable = Variable String Int deriving Eq
 inc :: Variable -> Variable
@@ -17,10 +19,19 @@ data Expression = Atom   Variable
                 | Apply  Expression Expression
                 deriving Eq
 
+-- see also  https://www.reddit.com/r/haskell/comments/9qx172/what_yous_favorite_weirdexotic_data_type/
+
+{-
+data Term v = Var v | App (Pair (Term v)) | Lam (Term (Incr v))
+data Incr v = Zero | Succ v
+
+which models the lambda calculus with correct-by-construction de bruijn indexing. This is the same approach taken by bound ( https://www.slideshare.net/ekmett/bound-making-de-bruijn-succ-less ).
+-}
+
 instance Show Expression where
   show (Atom v) = show v
   show (Lambda v l) = "(λ" ++ show v ++ "." ++ show l ++ ")"
-  show (Apply l m) = "("  ++ show l ++ " " ++ show m ++ ")"
+  show (Apply  l m) = "("  ++ show l ++ " " ++ show m ++ ")"
 
 -- replace  v     with    n      in    m      and   return
 replace :: Variable -> Expression -> Expression -> Expression
