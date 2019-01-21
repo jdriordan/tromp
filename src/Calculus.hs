@@ -11,6 +11,9 @@ data Variable = Variable String Int deriving Eq
 inc :: Variable -> Variable
 inc (Variable v n) = Variable v (n+1)
 
+var_name :: Variable -> String
+var_name (Variable s n) = s
+
 instance Show Variable where
   show (Variable c n) = c ++ replicate n '\''
 
@@ -18,15 +21,6 @@ data Expression = Atom   Variable
                 | Lambda Variable   Expression
                 | Apply  Expression Expression
                 deriving Eq
-
--- see also  https://www.reddit.com/r/haskell/comments/9qx172/what_yous_favorite_weirdexotic_data_type/
-
-{-
-data Term v = Var v | App (Pair (Term v)) | Lam (Term (Incr v))
-data Incr v = Zero | Succ v
-
-which models the lambda calculus with correct-by-construction de bruijn indexing. This is the same approach taken by bound ( https://www.slideshare.net/ekmett/bound-making-de-bruijn-succ-less ).
--}
 
 instance Show Expression where
   show (Atom v) = show v
@@ -45,49 +39,57 @@ replace v n w@(Lambda y x)    =
            -- change the bound variable (alpha-conversion) and go again
       else Lambda y $ replace v n x)
 
+prelude ::[(String,Expression)]
+prelude = 
+  [("i", i)
+  ,("true" , true)
+  ,("false", false)
+  ,("pair" , pair)
+  ,("M"    , cM)
+  ,("Y"    , cY)
+  ]
+
 beta :: Expression ->  Expression
-beta (Atom a) = Atom a
+beta (Atom a) = case lookup (var_name a) prelude of
+                  Just e  -> e
+                  Nothing -> Atom a 
 beta t@(Lambda a b) = t
-beta (Apply f@(Atom a) x) = Apply f (beta x)
+beta (Apply f@(Atom a) x) = Apply (beta f) (beta x)
 beta (Apply (Lambda x m) n) = replace x n m
 beta (Apply f x) = beta (Apply (beta f) (beta x))
-
-{-
-a :: Variable
-a = Variable "a" 0
-b = Variable "b" 0
-c = Variable "c" 0
-x = Variable "x" 0
-y = Variable "y" 0
-z = Variable "z" 0
--}
 
 -- Useful Terms from Tromp 2.1
 
 i :: Expression
 i = Lambda x (Atom x)
-  where x = Variable "x" 0
+  where x = Variable "x" (-1)
 
 true  = Lambda x (Lambda y $ Atom x)
   where
-    x = Variable "x" 0
-    y = Variable "y" 0
+    x = Variable "x" (-1)
+    y = Variable "y" (-1)
 false = Lambda x (Lambda y $ Atom y)
   where
-    x = Variable "x" 0
-    y = Variable "y" 0
+    x = Variable "x" (-1)
+    y = Variable "y" (-1)
 
 nil = false
 
 -- We don't need arbitrary n-tuples
-pair p q = Lambda z $ Apply (Apply (Atom z) p) q
-  where z = Variable "z" 0
+pair' p q = Lambda z $ Apply (Apply (Atom z) p) q
+  where z = Variable "z" (-1)
+
+pair :: Expression
+pair = Lambda x $ Lambda y (pair' (Atom x) (Atom y))
+  where
+    x = Variable "x" (-1)
+    y = Variable "y" (-1)
 
 list [] = nil
-list (x:xs) = pair x (list xs)
+list (x:xs) = pair' x (list xs)
 
 -- M[n] list access
-access m 0 = Apply m true
+access m (-1) = Apply m true
 access m n = access (Apply m false) (n-1)
 
 -- M and Y combinators
@@ -95,12 +97,14 @@ access m n = access (Apply m false) (n-1)
 cM = Lambda x $ Apply ox ox
   where
     ox = Atom x
-    x = Variable "x" 0
+    x = Variable "x" (-1)
 
 cY = Lambda f $ Apply cM (Lambda x $ Apply (Atom f) (Apply (Atom x) (Atom x)))
   where
-    x  = Variable "x" 0 
-    f  = Variable "f" 0
+    x  = Variable "x" (-1)
+    f  = Variable "f" (-1)
 
 omega :: Expression
 omega = Apply cM cM
+
+

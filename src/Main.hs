@@ -20,10 +20,10 @@ repl = do
 reduce :: Expression -> IO Expression
 reduce x = if x /= beta x
   then do
-    putStrLn "then"
+    putStr " >"
     putStrLn $ show $ beta x
     reduce $ beta x
   else do
-    putStrLn "else"
-    putStrLn $ show $ beta x
+    -- putStrLn $ show $ beta x
+    putStrLn "end."
     return x
