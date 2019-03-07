@@ -14,7 +14,9 @@ repl = do
   putStr "λ>"
   hFlush stdout
   s <- getLine
-  reduce $ parseBLC s
+  let p = parseBLC s
+  putStr $ show s
+  reduce p
   repl
 
 reduce :: Expression -> IO Expression
